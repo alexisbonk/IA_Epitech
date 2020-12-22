@@ -60,25 +60,28 @@ class Player():
             "Purple": 1,
             "Blue": 0,
         }
-        self.check_player_in_room(game_state, 0)
+        self.check_players_in_rooms(game_state, 0)
         #print(cards)
         #print(game_state)
         return
 
     def check_players_in_rooms(self, game_state, room_number):
+        print(type(room_number))
+        all_room = {}
         for room in passages[room_number]:
-            self.check_player_in_room(game_state, room)
+            print(type(room))
+            cpt = self.check_player_in_room(game_state, room)
+            all_room[str(room)] = cpt
+        print(all_room)
+        return all_room
+
 
     def check_player_in_room(self, game_state, room_number):
         player_cpt = 0
         for character in game_state["characters"]:
             if (character["position"] == room_number):
                 player_cpt = player_cpt + 1
-        print(player_cpt)
         return (player_cpt)
-            #print(x, y)
-            #if (players["position"] == room_number):
-                #player_cpt += 1
 
     def answer(self, question):
         # work
