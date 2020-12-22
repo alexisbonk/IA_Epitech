@@ -7,6 +7,9 @@ from logging.handlers import RotatingFileHandler
 
 import protocol
 
+
+passages = [{1, 4}, {0, 2}, {1, 3}, {2, 7}, {0, 5, 8},
+            {4, 6}, {5, 7}, {3, 6, 9}, {4, 9}, {7, 8}]
 host = "localhost"
 port = 12000
 # HEADERSIZE = 10
@@ -62,11 +65,17 @@ class Player():
         #print(game_state)
         return
 
+    def check_players_in_rooms(self, game_state, room_number):
+        for room in passages[room_number]:
+            self.check_player_in_room(game_state, room)
+
     def check_player_in_room(self, game_state, room_number):
         player_cpt = 0
-        for x, y in game_state.items():
-            if x == "characters":
-                print(y)
+        for character in game_state["characters"]:
+            if (character["position"] == room_number):
+                player_cpt = player_cpt + 1
+        print(player_cpt)
+        return (player_cpt)
             #print(x, y)
             #if (players["position"] == room_number):
                 #player_cpt += 1

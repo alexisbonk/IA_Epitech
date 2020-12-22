@@ -32,7 +32,6 @@ inspector_logger.addHandler(stream_handler)
 
 
 class Player():
-
     def __init__(self):
 
         self.end = False
@@ -50,7 +49,9 @@ class Player():
         # work
         data = question["data"]
         game_state = question["game state"]
-        response_index = 0        # log
+        response_index = 0
+        if (len(data) > 1):
+            response_index = 1 # log 
         inspector_logger.debug("|\n|")
         inspector_logger.debug("inspector answers")
         inspector_logger.debug(f"question type ----- {question['question type']}")
