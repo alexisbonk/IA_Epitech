@@ -49,21 +49,76 @@ class Player():
         self.socket.close()
 
 
-    def select_char(self, game_state):
+    def select_char(self, game_state, data):
+        actual_pound = -1
+        index = 0
         cards = {
-            "Red": 3,
-            "Grey": 2,
-            "Black": 1,
-            "White": 1,
-            "Brawn": 1,
-            "Pink": 1,
-            "Purple": 1,
-            "Blue": 0,
+            "red": 3,
+            "grey": 2,
+            "black": 1,
+            "white": 1,
+            "brown": 1,
+            "pink": 1,
+            "purple": 1,
+            "blue": 0,
         }
-        self.check_players_in_rooms(game_state, 0)
-        #print(cards)
-        #print(game_state)
-        return
+        if (len(data) <= 2):
+            cards["white"] += 1
+            cards["brown"] += 1
+            cards["black"] += 1
+        else:
+            cards["purple"] += 1
+            cards["pink"] += 1
+        for i in range(len(data)):
+            if (cards[data[i]["color"]] > actual_pound):
+                actual_pound = cards[data[i]["color"]]
+                index = i
+        return index
+
+    def stayAloneOrNot(self, game_state):
+        ###code bien pour inspecteur en fait
+        """places_dict = {"alone": 0, "notAlone": 0}
+        peopleInRoom = [0] * 10
+        for character in game_state["characters"]:
+            peopleInRoom[character["position"]] += 1
+        print(peopleInRoom)
+        for i in range (len(peopleInRoom)):
+            if (peopleInRoom[i] > 1):
+                places_dict["notAlone"] += peopleInRoom[i]
+            else:
+                places_dict["alone"] += peopleInRoom[i]
+        return peopleInRoom"""
+        for character in game_state["characters"]:
+            if (character["color"] == game_state["fantom"]):
+                position_fantom = character["position"]
+                break
+        if (position_fantom == game_state["shadow"]):
+            return True
+        for character in game_state["characters"]:
+            if (character["position"] == position_fantom):
+                return False
+        return True
+
+
+    def check_best_move(self, game_state, possible_move):
+        temp = self.stayAloneOrNot(game_state)
+        peopleInRoom = [0] * 10
+        room_number = -1
+        for character in game_state["characters"]:
+            peopleInRoom[character["position"]] += 1
+        if (temp == True):
+            for room in possible_move:
+                if (peopleInRoom[room] == 0 or room == game_state["shadow"]):
+                    room_number = room
+                    break
+        else:
+            for room in possible_move:
+                if (peopleInRoom[room] > 0 and room != game_state["shadow"]):
+                    room_number = room
+                    break
+        if (room_number == -1):
+            room_number = possible_move[0]
+        return (possible_move.index(room_number))
 
     def check_players_in_rooms(self, game_state, room_number):
         print(type(room_number))
@@ -72,9 +127,9 @@ class Player():
             print(type(room))
             cpt = self.check_player_in_room(game_state, room)
             all_room[str(room)] = cpt
-        print(all_room)
+        cpt = self.check_player_in_room(game_state, room)
+        all_room[str(room)] = cpt
         return all_room
-
 
     def check_player_in_room(self, game_state, room_number):
         player_cpt = 0
@@ -89,9 +144,16 @@ class Player():
         game_state = question["game state"]
         questionType = question['question type']
         if(questionType == 'select character'):
-            self.select_char(question["game state"])
-        response_index = random.randint(0, len(data)-1)
+            print("select character")
+            response_index = self.select_char(question["game state"], data)
+        if (questionType == 'select position'):
+            print("position")
+            response_index = self.check_best_move(game_state, data)
+        else:
+            response_index = 0
         # log
+        print("data == ", data)
+        print("index == ", response_index)
         fantom_logger.debug("|\n|")
         fantom_logger.debug("fantom answers")
         fantom_logger.debug(f"question type ----- {question['question type']}")
