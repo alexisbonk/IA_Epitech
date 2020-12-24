@@ -12,6 +12,20 @@ passages = [{1, 4}, {0, 2}, {1, 3}, {2, 7}, {0, 5, 8},
 pink_passages = [{1, 4}, {0, 2, 5, 7}, {1, 3, 6}, {2, 7}, {0, 5, 8, 9},
                  {4, 6, 1, 8}, {5, 7, 2, 9}, {3, 6, 9, 1}, {4, 9, 5},
                  {7, 8, 4, 6}]
+power_move = [['pink', [1, 1, 1]], 
+              ['blue', [1, 1, 1]], 
+              ['grey', [1, 1, 1]],
+              ['red', [1, 1, 1]], 
+              ['brown', [1, 1, 1]],
+              ['white', [1, 1, 1]], 
+              ['black', [1, 1, 1]], 
+              ['purple', [1, 1, 1]]]
+            #{'color' : 
+            # #index_if_nothing, 
+            # #index_if_someone_above, 
+            # #index_if_someone_with 
+            # }
+
 host = "localhost"
 port = 12000
 
@@ -59,18 +73,30 @@ class Player():
         return (player_cpt)
 
     def set_power(self, game_state, data, color):
-        print("Color: ", color)
-        if (color == 'red'):
-            return 1
-        else:
-            return 0
+        for moves in power_move:
+            if (moves[0] == color.lower()):
+                print("Color: ", color.lower())
+                print("Power Moves: ", moves[1])
+                if (self.check_player_in_room(game_state, 0) > 1):
+                    return moves[1][1]
+                elif (self.check_player_in_room(game_state, 0) > 1):
+                    return moves[1][2]
+                else:
+                    return moves[1][0]
+        return 0
 
     def select_power(self, game_state, data, color):
-        print("Color: ", color)
-        if (color == 'red'):
-            return 1
-        else:
-            return 0
+        for moves in power_move:
+            if (moves[0] == color.lower()):
+                print("Color: ", color.lower())
+                print("Power Moves: ", moves[1])
+                if (self.check_player_in_room(game_state, 0) > 1):
+                    return moves[1][1]
+                elif (self.check_player_in_room(game_state, 0) > 1):
+                    return moves[1][2]
+                else:
+                    return moves[1][0]
+        return 0
 
     def select_position(self, game_state, data):
         return self.check_players_in_rooms(game_state, data, 0)
