@@ -87,23 +87,21 @@ class Player():
         return 0
 
     def power_purple(self, game_state):
-        print("power purple")
+        return 0
 
     def power_blue(self, active_str=""):
-        print(active_str)
+        return 0
 
     def power_white(self, game_state):
-        print("poiwer white")
         position = self.getPosition('white', game_state)
         possibility = list(passages[position])
         people_around = self.getAroundMap_color(game_state, position)
-        print("poss type ==", type(possibility))
-        print("blocked type == ", type(game_state["blocked"]))
-        for i in range(len(possibility)):
-            print(i)
-            if position in game_state["blocked"] and possibility[i] in game_state["blocked"]:
-                possibility.pop(i)
-                people_around.pop(i + 1)
+        temp = 0
+        for i in range(len(possibility) - temp):
+            if position in game_state["blocked"] and possibility[i - temp] in game_state["blocked"]:
+                possibility.pop(i - temp)
+                people_around.pop(i + 1 - temp)
+                temp += 1
         for character in game_state["characters"]:
             if character["color"] == "white":
                 position = character["position"]
@@ -116,8 +114,7 @@ class Player():
                     return i
             return 0
         else:
-            print(possibility)
-            print(people_around)
+
             for i in range(len(possibility)):
                 if (people_around[i + 1]) == 1:
                     return i
@@ -126,13 +123,26 @@ class Player():
             return 0
 
     def power_grey(self, game_state):
-        print("power grey")
+        rooms = [0] * 10
+        for character in game_state["characters"]:
+            rooms[character["position"]] += 1
+        if (self.stayAloneOrNot == True):
+            return rooms.index(max(rooms))
+        else:
+            return rooms.index(min(rooms))
 
     def function_brown(self, game_state):
-        print("brown")
+        if (self.stayAloneOrNot == True):
+            return 0
+        else:
+            return 1
+        return 1
 
     def function_black(self, game_state):
-        print("black")
+        if (self.stayAloneOrNot(game_state) == True):
+            return 0
+        else :
+            return 1
 
     def function_white(self, game_state):
         for character in game_state["characters"]:
@@ -154,7 +164,6 @@ class Player():
             return 0
 
     def function_purple(self, game_state):
-        print("purple")
         return 0
 
     def select_char(self, game_state, data):
@@ -184,18 +193,6 @@ class Player():
         return index
 
     def stayAloneOrNot(self, game_state):
-        ###code bien pour inspecteur en fait
-        """places_dict = {"alone": 0, "notAlone": 0}
-        peopleInRoom = [0] * 10
-        for character in game_state["characters"]:
-            peopleInRoom[character["position"]] += 1
-        print(peopleInRoom)
-        for i in range (len(peopleInRoom)):
-            if (peopleInRoom[i] > 1):
-                places_dict["notAlone"] += peopleInRoom[i]
-            else:
-                places_dict["alone"] += peopleInRoom[i]
-        return peopleInRoom"""
         for character in game_state["characters"]:
             if (character["color"] == game_state["fantom"]):
                 position_fantom = character["position"]
@@ -255,14 +252,12 @@ class Player():
         elif (questionType == 'select position'):
             response_index = self.check_best_move(game_state, data)
         elif (questionType == 'activate ' + self.active_card + ' power'):
-            self.function_color[self.active_card](game_state)
-            response_index = 1
+            response_index = self.function_color[self.active_card](game_state)
         elif (self.active_card + ' character power' in questionType):
             if (self.active_card == "blue"):
-                self.power_blue(questionType)
+                response_index = self.power_blue(questionType)
             else:
-                self.function_power[self.active_card](game_state)
-            response_index = 0
+                response_index = self.function_power[self.active_card](game_state)
         else:
             response_index = 0
         # log
