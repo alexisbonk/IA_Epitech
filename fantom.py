@@ -12,6 +12,7 @@ passages = [{1, 4}, {0, 2}, {1, 3}, {2, 7}, {0, 5, 8},
             {4, 6}, {5, 7}, {3, 6, 9}, {4, 9}, {7, 8}]
 host = "localhost"
 port = 12000
+
 # HEADERSIZE = 10
 
 """
@@ -39,8 +40,42 @@ class Player():
     def __init__(self):
 
         self.end = False
+        self.active_card = ""
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.function_color = {
+            "brown": self.function_brown,
+            "black": self.function_black,
+            "white": self.function_white,
+            "purple": self.function_purple,
+        }
+
+        self.function_power = {
+            "blue": self.power_blue,
+            "white": self.power_white,
+            "grey": self.power_grey,
+            "purple": self.power_purple,
+            "brown": self.power_brown,
+        }
+
+    def getAroundMap_color(self, game_state, position):
+
+        def getPeopleInRoom():
+            rooms = [0] * 10
+            for character in game_state["characters"]:
+                rooms[character["position"]] += 1
+            return rooms
+        peopleAround = []
+        peopleInRoom = getPeopleInRoom()
+        peopleAround.append(peopleInRoom[position])
+        for room in passages[position]:
+            peopleAround.append(peopleInRoom[room])
+        return peopleAround
+
+    def getPosition(self, color, game_state):
+        for character in game_state["characters"]:
+            if character["color"] == color:
+                return character["position"]
 
     def connect(self):
         self.socket.connect((host, port))
@@ -48,6 +83,79 @@ class Player():
     def reset(self):
         self.socket.close()
 
+    def power_brown(self, game_state):
+        return 0
+
+    def power_purple(self, game_state):
+        print("power purple")
+
+    def power_blue(self, active_str=""):
+        print(active_str)
+
+    def power_white(self, game_state):
+        print("poiwer white")
+        position = self.getPosition('white', game_state)
+        possibility = list(passages[position])
+        people_around = self.getAroundMap_color(game_state, position)
+        print("poss type ==", type(possibility))
+        print("blocked type == ", type(game_state["blocked"]))
+        for i in range(len(possibility)):
+            print(i)
+            if position in game_state["blocked"] and possibility[i] in game_state["blocked"]:
+                possibility.pop(i)
+                people_around.pop(i + 1)
+        for character in game_state["characters"]:
+            if character["color"] == "white":
+                position = character["position"]
+                break
+        if (self.stayAloneOrNot(game_state) == True):
+            if game_state["shadow"] in passages[position]:
+                return passages[position].index(game_state["shadow"])
+            for i in range(len(possibility)):
+                if people_around[i + 1] == 0:
+                    return i
+            return 0
+        else:
+            print(possibility)
+            print(people_around)
+            for i in range(len(possibility)):
+                if (people_around[i + 1]) == 1:
+                    return i
+            if (possibility[0] == game_state["shadow"] and len(possibility)):
+                return 1
+            return 0
+
+    def power_grey(self, game_state):
+        print("power grey")
+
+    def function_brown(self, game_state):
+        print("brown")
+
+    def function_black(self, game_state):
+        print("black")
+
+    def function_white(self, game_state):
+        for character in game_state["characters"]:
+            if character["color"] == "white":
+                position = character["position"]
+                break
+        people_around = self.getAroundMap_color(game_state, position)
+        if (self.stayAloneOrNot(game_state) == True):
+            if (position == game_state["shadow"]):
+                return 0
+            return 1
+        else:
+            for i in range (len(passages[position])):
+                if (passages[position] == game_state["shadow"]):
+                    people_around.pop(i + 1)
+            for i in range(1, len(people_around)):
+                if people_around[i] >= 1 and passages[i - 1] != game_state["shadow"]:
+                    return 1
+            return 0
+
+    def function_purple(self, game_state):
+        print("purple")
+        return 0
 
     def select_char(self, game_state, data):
         actual_pound = -1
@@ -121,10 +229,8 @@ class Player():
         return (possible_move.index(room_number))
 
     def check_players_in_rooms(self, game_state, room_number):
-        print(type(room_number))
         all_room = {}
         for room in passages[room_number]:
-            print(type(room))
             cpt = self.check_player_in_room(game_state, room)
             all_room[str(room)] = cpt
         cpt = self.check_player_in_room(game_state, room)
@@ -144,16 +250,22 @@ class Player():
         game_state = question["game state"]
         questionType = question['question type']
         if(questionType == 'select character'):
-            print("select character")
             response_index = self.select_char(question["game state"], data)
-        if (questionType == 'select position'):
-            print("position")
+            self.active_card = data[response_index]["color"]
+        elif (questionType == 'select position'):
             response_index = self.check_best_move(game_state, data)
+        elif (questionType == 'activate ' + self.active_card + ' power'):
+            self.function_color[self.active_card](game_state)
+            response_index = 1
+        elif (self.active_card + ' character power' in questionType):
+            if (self.active_card == "blue"):
+                self.power_blue(questionType)
+            else:
+                self.function_power[self.active_card](game_state)
+            response_index = 0
         else:
             response_index = 0
         # log
-        print("data == ", data)
-        print("index == ", response_index)
         fantom_logger.debug("|\n|")
         fantom_logger.debug("fantom answers")
         fantom_logger.debug(f"question type ----- {question['question type']}")
