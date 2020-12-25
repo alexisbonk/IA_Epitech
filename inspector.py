@@ -12,13 +12,13 @@ passages = [{1, 4}, {0, 2}, {1, 3}, {2, 7}, {0, 5, 8},
 pink_passages = [{1, 4}, {0, 2, 5, 7}, {1, 3, 6}, {2, 7}, {0, 5, 8, 9},
                  {4, 6, 1, 8}, {5, 7, 2, 9}, {3, 6, 9, 1}, {4, 9, 5},
                  {7, 8, 4, 6}]
-power_move = [['pink', [1, 1, 1]], 
-              ['blue', [1, 1, 1]], 
-              ['grey', [1, 1, 1]],
-              ['red', [1, 1, 1]], 
-              ['brown', [1, 1, 1]],
-              ['white', [1, 1, 1]], 
-              ['black', [1, 1, 1]], 
+power_move = [['pink', [1, 1, 1]],
+              ['red', [1, 1, 1]],
+              ['blue', [0, 0, 0]],
+              ['grey', [0, 0, 0]],
+              ['brown', [0, 0, 0]],
+              ['white', [1, 0, 1]],
+              ['black', [0, 1, 0]],
               ['purple', [1, 1, 1]]]
             #{'color' : 
             # #index_if_nothing, 
@@ -47,6 +47,7 @@ inspector_logger.addHandler(stream_handler)
 class Player():
     def __init__(self):
         self.end = False
+        self.active_card = ""
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -56,14 +57,25 @@ class Player():
     def reset(self):
         self.socket.close()
 
-    def check_players_in_rooms(self, game_state, data, room_number):
-        all_room = {}
-        for room in passages[room_number]:
-            cpt = self.check_player_in_room(game_state, room)
-            all_room[str(room)] = cpt
-        print(all_room)
-        return random.randint(0, len(data)-1)
+    def getAroundMap_color(self, game_state, position):
+        def getPeopleInRoom():
+            rooms = [0] * 10
+            for character in game_state["characters"]:
+                rooms[character["position"]] += 1
+            return rooms
+        peopleAround = []
+        peopleInRoom = getPeopleInRoom()
+        print(peopleInRoom)
+        print(position)
+        peopleAround.append(peopleInRoom[position])
+        for room in passages[position]:
+            peopleAround.append(peopleInRoom[room])
+        return peopleAround
 
+    def getPosition(self, color, game_state):
+        for character in game_state["characters"]:
+            if character["color"] == color:
+                return character["position"]
 
     def check_player_in_room(self, game_state, room_number):
         player_cpt = 0
@@ -73,37 +85,55 @@ class Player():
         return (player_cpt)
 
     def set_power(self, game_state, data, color):
+        position = self.getPosition(color, game_state)
+        people_around = self.getAroundMap_color(game_state, position)
         for moves in power_move:
             if (moves[0] == color.lower()):
                 print("Color: ", color.lower())
                 print("Power Moves: ", moves[1])
-                if (self.check_player_in_room(game_state, 0) > 1):
+                print("Position: ", position)
+                print("People around: ", people_around)
+                if (people_around[0] > 1):
                     return moves[1][1]
-                elif (self.check_player_in_room(game_state, 0) > 1):
+                elif (people_around[1] > 1 or people_around[2] > 1):
                     return moves[1][2]
                 else:
                     return moves[1][0]
         return 0
 
     def select_power(self, game_state, data, color):
+        position = self.getPosition(color, game_state)
+        people_around = self.getAroundMap_color(game_state, position)
         for moves in power_move:
             if (moves[0] == color.lower()):
                 print("Color: ", color.lower())
                 print("Power Moves: ", moves[1])
-                if (self.check_player_in_room(game_state, 0) > 1):
+                print("Position: ", position)
+                print("People around: ", people_around)
+                if (people_around[0] > 1):
                     return moves[1][1]
-                elif (self.check_player_in_room(game_state, 0) > 1):
+                elif (people_around[1] > 1 or people_around[2] > 1):
                     return moves[1][2]
                 else:
                     return moves[1][0]
         return 0
 
-    def select_position(self, game_state, data):
-        return self.check_players_in_rooms(game_state, data, 0)
+    def select_position(self, game_state, possible_move, index):
+        suspectInRoom = [0] * 10
+        room_number = -1
+        for character in game_state["characters"]:
+            if (character["suspect"]):
+                suspectInRoom[character["position"]] += 1
+        for room in possible_move:
+            if (suspectInRoom[room] > 0 or room != game_state["shadow"]):
+                room_number = room
+                break
+        if (room_number == -1):
+            room_number = possible_move[0]
+        return (possible_move.index(room_number))
 
-    def select_character(self, game_state, data):
+    def select_character(self, game_state, data, index):
         actual_pound = -1
-        index = 0
         cards_priority = {
             "red": 3,
             "pink": 2,
@@ -114,37 +144,35 @@ class Player():
             "blue": 0,
             "grey": 0,
         }
-        if (len(data) <= 2):
-            cards_priority["white"] += 1
-            cards_priority["brown"] += 1
-            cards_priority["black"] += 1
-        else:
-            cards_priority["purple"] += 1
-            cards_priority["pink"] += 1
         for i in range(len(data)):
             if (cards_priority[data[i]["color"]] > actual_pound):
                 actual_pound = cards_priority[data[i]["color"]]
                 index = i
-        return index
+        self.active_card = data[index]["color"]
+        return (index)
 
-    def answer(self, question):
-        data = question["data"]
-        game_state = question["game state"]
-        questionType = question['question type']
+    def get_answer(self, game_state, data, questionType):
         print("[Question] ", questionType)
         print("[Data]: ", data)
         if(questionType == 'select character'):
-            response_index = self.select_character(game_state, data)
+            response_index = self.select_character(game_state, data, 0)
         elif (questionType == 'select position'):
-            response_index = self.select_position(game_state, data)
+            response_index = self.select_position(game_state, data, 0)
         elif (questionType.split(' ')[0] == 'activate'):
             response_index = self.select_power(game_state, data, questionType.split(' ')[1])
-        elif (questionType.split(' ')[1] == 'character'):
+        elif (questionType.split(' ')[1] == 'character'): #Blue, white, grey, brown
             response_index = self.set_power(game_state, data, questionType.split(' ')[0])
         else:
             response_index = random.randint(0, len(data)-1)
         print("[Response]: ", data[response_index])
         print("-------------------------")
+        return (response_index)
+
+    def answer(self, question):
+        data = question["data"]
+        game_state = question["game state"]
+        questionType = question['question type']
+        response_index = self.get_answer(game_state, data, questionType)
         inspector_logger.debug("|\n|")
         inspector_logger.debug("inspector answers")
         inspector_logger.debug(f"question type ----- {question['question type']}")
