@@ -9,22 +9,6 @@ import protocol
 
 passages = [{1, 4}, {0, 2}, {1, 3}, {2, 7}, {0, 5, 8},
             {4, 6}, {5, 7}, {3, 6, 9}, {4, 9}, {7, 8}]
-pink_passages = [{1, 4}, {0, 2, 5, 7}, {1, 3, 6}, {2, 7}, {0, 5, 8, 9},
-                 {4, 6, 1, 8}, {5, 7, 2, 9}, {3, 6, 9, 1}, {4, 9, 5},
-                 {7, 8, 4, 6}]
-power_move = [['pink', [1, 1, 1]],
-              ['red', [1, 1, 1]],
-              ['blue', [0, 0, 0]],
-              ['grey', [0, 0, 0]],
-              ['brown', [0, 0, 0]],
-              ['white', [1, 0, 1]],
-              ['black', [0, 1, 0]],
-              ['purple', [1, 1, 1]]]
-            #{'color' : 
-            # #index_if_nothing, 
-            # #index_if_someone_above, 
-            # #index_if_someone_with 
-            # }
 
 host = "localhost"
 port = 12000
@@ -57,16 +41,15 @@ class Player():
     def reset(self):
         self.socket.close()
 
+    def getPeopleInRoom(self, game_state):
+        rooms = [0] * 10
+        for character in game_state["characters"]:
+            rooms[character["position"]] += 1
+        return rooms
+
     def getAroundMap_color(self, game_state, position):
-        def getPeopleInRoom():
-            rooms = [0] * 10
-            for character in game_state["characters"]:
-                rooms[character["position"]] += 1
-            return rooms
+        peopleInRoom = self.getPeopleInRoom(game_state)
         peopleAround = []
-        peopleInRoom = getPeopleInRoom()
-        print(peopleInRoom)
-        print(position)
         peopleAround.append(peopleInRoom[position])
         for room in passages[position]:
             peopleAround.append(peopleInRoom[room])
@@ -85,62 +68,68 @@ class Player():
         return (player_cpt)
 
     def set_power(self, game_state, data, color):
+        peopleInRoom = self.getPeopleInRoom(game_state)
         position = self.getPosition(color, game_state)
-        people_around = self.getAroundMap_color(game_state, position)
-        for moves in power_move:
-            if (moves[0] == color.lower()):
-                print("Color: ", color.lower())
-                print("Power Moves: ", moves[1])
-                print("Position: ", position)
-                print("People around: ", people_around)
-                if (people_around[0] > 1):
-                    return moves[1][1]
-                elif (people_around[1] > 1 or people_around[2] > 1):
-                    return moves[1][2]
-                else:
-                    return moves[1][0]
-        return 0
+        if (color.lower() == 'purple'):  #swap with any suspect
+            for character in game_state["characters"]:
+                for color_with in data:
+                    if (character["color"] == color_with and character["suspect"]):
+                        return data.index(color_with)
+        elif (color.lower() == 'grey'):  #turn off the light in empty room
+            return peopleInRoom.index(0)
+        elif (color.lower() == 'brown'): #check if suspect with him
+            for character in game_state["characters"]:
+                for color_with in data:
+                    if (character["color"] == color_with and character["suspect"]):
+                        return data.index(color_with)
+        return random.randint(0, len(data)-1)
 
     def select_power(self, game_state, data, color):
         position = self.getPosition(color, game_state)
         people_around = self.getAroundMap_color(game_state, position)
+        power_move = [
+            ['pink', [1, 1, 1]],
+            ['red', [1, 1, 1]],
+            ['blue', [0, 0, 0]],
+            ['grey', [1, 1, 1]],
+            ['brown', [0, 0, 1]],
+            ['white', [1, 0, 1]],
+            ['black', [0, 1, 0]],
+            ['purple', [1, 1, 1]]
+        ]
         for moves in power_move:
             if (moves[0] == color.lower()):
-                print("Color: ", color.lower())
-                print("Power Moves: ", moves[1])
-                print("Position: ", position)
-                print("People around: ", people_around)
                 if (people_around[0] > 1):
                     return moves[1][1]
                 elif (people_around[1] > 1 or people_around[2] > 1):
                     return moves[1][2]
                 else:
                     return moves[1][0]
-        return 0
+        return random.randint(0, len(data)-1)
 
-    def select_position(self, game_state, possible_move, index):
+    def select_position(self, game_state, data, index):
         suspectInRoom = [0] * 10
         room_number = -1
         for character in game_state["characters"]:
             if (character["suspect"]):
                 suspectInRoom[character["position"]] += 1
-        for room in possible_move:
+        for room in data:
             if (suspectInRoom[room] > 0 or room != game_state["shadow"]):
                 room_number = room
                 break
         if (room_number == -1):
-            room_number = possible_move[0]
-        return (possible_move.index(room_number))
+            room_number = data[0]
+        return (data.index(room_number))
 
     def select_character(self, game_state, data, index):
         actual_pound = -1
         cards_priority = {
-            "red": 3,
-            "pink": 2,
-            "black": 1,
-            "brown": 1,
-            "white": 0,
-            "purple": 0,
+            "red": 4,
+            "pink": 3,
+            "black": 2,
+            "brown": 2,
+            "white": 1,
+            "purple": 1,
             "blue": 0,
             "grey": 0,
         }
@@ -152,8 +141,6 @@ class Player():
         return (index)
 
     def get_answer(self, game_state, data, questionType):
-        print("[Question] ", questionType)
-        print("[Data]: ", data)
         if(questionType == 'select character'):
             response_index = self.select_character(game_state, data, 0)
         elif (questionType == 'select position'):
@@ -164,8 +151,6 @@ class Player():
             response_index = self.set_power(game_state, data, questionType.split(' ')[0])
         else:
             response_index = random.randint(0, len(data)-1)
-        print("[Response]: ", data[response_index])
-        print("-------------------------")
         return (response_index)
 
     def answer(self, question):
