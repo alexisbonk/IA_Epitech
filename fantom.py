@@ -266,7 +266,7 @@ class Player():
         fantom_logger.debug(f"question type ----- {question['question type']}")
         fantom_logger.debug(f"data -------------- {data}")
         fantom_logger.debug(f"response index ---- {response_index}")
-        fantom_logger.debug(f"response ---------- {data[response_index]}")
+        #fantom_logger.debug(f"response ---------- {data[response_index]}")
         return response_index
 
     def handle_json(self, data):
